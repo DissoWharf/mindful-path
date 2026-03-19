@@ -20,7 +20,7 @@ Thanks for your interest in contributing. This is a small, focused app — contr
 ## Setup
 
 ```bash
-git clone https://github.com/yourusername/mindful-path.git
+git clone https://github.com/DissoWharf/mindful-path.git
 cd mindful-path
 pip install PyQt6
 python3 main.py
