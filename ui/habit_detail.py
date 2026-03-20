@@ -9,7 +9,7 @@ from datetime import date
 from database import Database
 
 CATEGORY_COLORS = {
-    "Mind": "#7c9cbf", "Body": "#6ea87a", "Study": "#c8790a",
+    "Mind": "#4a6fa5", "Body": "#6ea87a", "Study": "#c8790a",
     "Heart": "#c86a7c", "Path": "#9c7cbc",
 }
 CATEGORY_ICONS = {

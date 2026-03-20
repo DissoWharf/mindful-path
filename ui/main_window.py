@@ -45,7 +45,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.db = db
         self._cfg = load_config()
-        self._dark = self._cfg.get("dark_mode", False)
+        self._dark = True
         self._notif = None  # guard: set properly in _build_ui
         self.setWindowTitle("Mindful Path")
         self.setMinimumSize(960, 680)
@@ -103,6 +103,7 @@ class MainWindow(QMainWindow):
         # ── Header ──────────────────────────────
         header = QWidget()
         header.setObjectName("sidebar_header")
+        header.setAutoFillBackground(False)
         h_layout = QVBoxLayout(header)
         h_layout.setContentsMargins(16, 22, 16, 18)
         h_layout.setSpacing(4)
@@ -149,25 +150,20 @@ class MainWindow(QMainWindow):
         layout.addWidget(nav_wrap)
         layout.addStretch()
 
-        # ── Theme toggle ─────────────────────────
-        self.theme_btn = QPushButton()
-        self.theme_btn.setObjectName("theme_toggle")
-        self.theme_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.theme_btn.clicked.connect(self._toggle_theme)
-
-        settings_btn = QPushButton("⚙")
-        settings_btn.setObjectName("theme_toggle")
+        # ── Settings ─────────────────────────────
+        settings_btn = QPushButton("⚙  Settings")
+        settings_btn.setObjectName("settings_btn")
         settings_btn.setToolTip("Settings")
         settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        settings_btn.setMinimumHeight(40)
         settings_btn.clicked.connect(self._open_settings)
 
         bottom_row = QWidget()
         br_layout = QHBoxLayout(bottom_row)
-        br_layout.setContentsMargins(12, 0, 12, 0)
-        br_layout.setSpacing(8)
+        br_layout.setContentsMargins(16, 0, 16, 0)
+        br_layout.addStretch()
         br_layout.addWidget(settings_btn)
         br_layout.addStretch()
-        br_layout.addWidget(self.theme_btn)
         layout.addWidget(bottom_row)
 
         hint = QLabel("each day, begin again")
@@ -201,55 +197,48 @@ class MainWindow(QMainWindow):
         # Update QPalette so Fusion-drawn widgets also respect the theme
         p = QPalette()
         if self._dark:
-            p.setColor(QPalette.ColorRole.Window,          QColor("#1a1510"))
-            p.setColor(QPalette.ColorRole.WindowText,      QColor("#e0d0b8"))
-            p.setColor(QPalette.ColorRole.Base,            QColor("#241e14"))
-            p.setColor(QPalette.ColorRole.AlternateBase,   QColor("#2a2318"))
-            p.setColor(QPalette.ColorRole.Text,            QColor("#e0d0b8"))
+            p.setColor(QPalette.ColorRole.Window,          QColor("#19130e"))
+            p.setColor(QPalette.ColorRole.WindowText,      QColor("#ecdfc9"))
+            p.setColor(QPalette.ColorRole.Base,            QColor("#221810"))
+            p.setColor(QPalette.ColorRole.AlternateBase,   QColor("#261d16"))
+            p.setColor(QPalette.ColorRole.Text,            QColor("#ecdfc9"))
             p.setColor(QPalette.ColorRole.BrightText,      QColor("#ffffff"))
-            p.setColor(QPalette.ColorRole.Button,          QColor("#2a2318"))
-            p.setColor(QPalette.ColorRole.ButtonText,      QColor("#e0d0b8"))
-            p.setColor(QPalette.ColorRole.Highlight,       QColor("#d4880f"))
+            p.setColor(QPalette.ColorRole.Button,          QColor("#261d16"))
+            p.setColor(QPalette.ColorRole.ButtonText,      QColor("#ecdfc9"))
+            p.setColor(QPalette.ColorRole.Highlight,       QColor("#6b8fbf"))
             p.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
-            p.setColor(QPalette.ColorRole.ToolTipBase,     QColor("#2a2318"))
-            p.setColor(QPalette.ColorRole.ToolTipText,     QColor("#e0d0b8"))
-            p.setColor(QPalette.ColorRole.PlaceholderText, QColor("#6a5a48"))
-            p.setColor(QPalette.ColorRole.Mid,             QColor("#3e3224"))
-            p.setColor(QPalette.ColorRole.Dark,            QColor("#130e0a"))
-            p.setColor(QPalette.ColorRole.Shadow,          QColor("#0a0806"))
+            p.setColor(QPalette.ColorRole.ToolTipBase,     QColor("#261d16"))
+            p.setColor(QPalette.ColorRole.ToolTipText,     QColor("#ecdfc9"))
+            p.setColor(QPalette.ColorRole.PlaceholderText, QColor("#6a5040"))
+            p.setColor(QPalette.ColorRole.Mid,             QColor("#3a2a1c"))
+            p.setColor(QPalette.ColorRole.Dark,            QColor("#120e0a"))
+            p.setColor(QPalette.ColorRole.Shadow,          QColor("#080604"))
         else:
-            p.setColor(QPalette.ColorRole.Window,          QColor("#faf8f3"))
-            p.setColor(QPalette.ColorRole.WindowText,      QColor("#2c2416"))
-            p.setColor(QPalette.ColorRole.Base,            QColor("#ffffff"))
-            p.setColor(QPalette.ColorRole.AlternateBase,   QColor("#f4efe6"))
-            p.setColor(QPalette.ColorRole.Text,            QColor("#2c2416"))
+            p.setColor(QPalette.ColorRole.Window,          QColor("#f7f2e8"))
+            p.setColor(QPalette.ColorRole.WindowText,      QColor("#1c120a"))
+            p.setColor(QPalette.ColorRole.Base,            QColor("#f0e8d8"))
+            p.setColor(QPalette.ColorRole.AlternateBase,   QColor("#ede5d5"))
+            p.setColor(QPalette.ColorRole.Text,            QColor("#1c120a"))
             p.setColor(QPalette.ColorRole.BrightText,      QColor("#000000"))
-            p.setColor(QPalette.ColorRole.Button,          QColor("#f0ebe0"))
-            p.setColor(QPalette.ColorRole.ButtonText,      QColor("#2c2416"))
-            p.setColor(QPalette.ColorRole.Highlight,       QColor("#c8790a"))
+            p.setColor(QPalette.ColorRole.Button,          QColor("#e8dece"))
+            p.setColor(QPalette.ColorRole.ButtonText,      QColor("#1c120a"))
+            p.setColor(QPalette.ColorRole.Highlight,       QColor("#4a6fa5"))
             p.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
-            p.setColor(QPalette.ColorRole.PlaceholderText, QColor("#a09080"))
-            p.setColor(QPalette.ColorRole.Mid,             QColor("#d8d0c0"))
-            p.setColor(QPalette.ColorRole.Dark,            QColor("#b0a898"))
-            p.setColor(QPalette.ColorRole.Shadow,          QColor("#807060"))
+            p.setColor(QPalette.ColorRole.PlaceholderText, QColor("#9e8472"))
+            p.setColor(QPalette.ColorRole.Mid,             QColor("#ccc0a8"))
+            p.setColor(QPalette.ColorRole.Dark,            QColor("#a89070"))
+            p.setColor(QPalette.ColorRole.Shadow,          QColor("#7d6248"))
         app.setPalette(p)
-
-        self.theme_btn.setText("☀  Light" if self._dark else "◑  Dark")
 
         # Refresh views so inline-styled widgets repaint with correct colors
         self.today_view.refresh()
         self.progress_view.refresh()
+        self.about_view.refresh()
 
     def _open_settings(self):
         from .settings_dialog import SettingsDialog
         dlg = SettingsDialog(self._notif, self)
         dlg.exec()
-
-    def _toggle_theme(self):
-        self._dark = not self._dark
-        self._cfg["dark_mode"] = self._dark
-        save_config(self._cfg)
-        self._apply_theme()
 
     def closeEvent(self, event):
         self.db.close()

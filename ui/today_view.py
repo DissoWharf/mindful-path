@@ -37,7 +37,7 @@ QUOTES = [
 ]
 
 PRIORITY_TEXT = {1: "Essential", 2: "Important", 3: "Gentle"}
-PRIORITY_COLOR = {1: "#d05a20", 2: "#c8790a", 3: "#5c7a5c"}
+PRIORITY_COLOR = {1: "#943d2b", 2: "#c8790a", 3: "#5c7a5c"}
 
 
 # ── Progress Ring ─────────────────────────────────────────────────────────
@@ -118,6 +118,13 @@ class HabitItem(QFrame):
         self._apply_style(completed)
 
     def _build(self, habit: dict, completed: bool, streak: int):
+        from PyQt6.QtWidgets import QApplication
+        dark = QApplication.palette().window().color().lightness() < 128
+        muted_col   = "#6a5a44" if dark else "#a09080"
+        chevron_col = "#5a4a38" if dark else "#ccc0b0"
+        name_col    = "#e0d0b8" if dark else "#2c2416"
+        done_col    = "#5a4a38" if dark else "#b0a090"
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(14, 10, 14, 10)
         layout.setSpacing(14)
@@ -133,17 +140,19 @@ class HabitItem(QFrame):
 
         name = QLabel(habit["name"])
         name_font = QFont()
-        name_font.setPixelSize(14)
+        name_font.setPixelSize(13)
         name_font.setBold(True)
         if completed:
             name_font.setStrikeOut(True)
-            name.setStyleSheet("color: #a09080;")
+            name.setStyleSheet(f"color: {done_col};")
+        else:
+            name.setStyleSheet(f"color: {name_col};")
         name.setFont(name_font)
         info.addWidget(name)
 
         if habit.get("eightfold_aspect"):
             asp = QLabel(f"↝  {habit['eightfold_aspect']}")
-            asp.setStyleSheet("color: #a09080; font-size: 11px; font-style: italic;")
+            asp.setStyleSheet(f"color: {muted_col}; font-size: 11px; font-style: italic;")
             info.addWidget(asp)
 
         layout.addLayout(info, 1)
@@ -164,7 +173,7 @@ class HabitItem(QFrame):
         right.addWidget(pri_lbl)
 
         chevron = QLabel("›")
-        chevron.setStyleSheet("color: #c8b898; font-size: 16px; padding-left: 4px;")
+        chevron.setStyleSheet(f"color: {chevron_col}; font-size: 16px; padding-left: 4px;")
         right.addWidget(chevron)
         layout.addLayout(right)
 

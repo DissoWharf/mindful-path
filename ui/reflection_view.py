@@ -215,17 +215,18 @@ class ReflectionView(QWidget):
         btn_row.addStretch()
 
         self.save_btn = QPushButton("Save Reflection")
-        self.save_btn.setFixedWidth(160)
+        self.save_btn.setFixedWidth(180)
         self.save_btn.clicked.connect(self._save)
         btn_row.addWidget(self.save_btn)
 
-        self.saved_lbl = QLabel("Saved ✓")
-        self.saved_lbl.setStyleSheet("color: #6ea87a; font-size: 13px;")
-        self.saved_lbl.setVisible(False)
-        btn_row.addWidget(self.saved_lbl)
-
         cl.addLayout(btn_row)
         cl.addStretch()
+
+        # Connect edits to revert saved state
+        self.intent_edit.textChanged.connect(self._mark_unsaved)
+        self.eve_edit.textChanged.connect(self._mark_unsaved)
+        self.grat_edit.textChanged.connect(self._mark_unsaved)
+        self.mood_selector.mood_changed.connect(self._mark_unsaved)
 
     def refresh(self):
         self._today = date.today().isoformat()
@@ -243,13 +244,26 @@ class ReflectionView(QWidget):
             self.eve_edit.setPlainText(reflection.get("evening_reflection", ""))
             self.grat_edit.setPlainText(reflection.get("gratitude", ""))
             self.mood_selector.set_mood(reflection.get("mood", 3))
+            self._mark_saved()
         else:
             self.intent_edit.clear()
             self.eve_edit.clear()
             self.grat_edit.clear()
             self.mood_selector.set_mood(3)
+            self._mark_unsaved()
 
-        self.saved_lbl.setVisible(False)
+        self._mark_unsaved()
+
+    def _mark_saved(self):
+        self.save_btn.setText("Saved ✓")
+        self.save_btn.setStyleSheet(
+            "background-color: #4a8a5a; color: white; border-radius: 7px;"
+            "padding: 7px 18px; font-size: 12px; font-weight: 500;"
+        )
+
+    def _mark_unsaved(self):
+        self.save_btn.setText("Save Reflection")
+        self.save_btn.setStyleSheet("")
 
     def _save(self):
         self.db.save_reflection(
@@ -259,6 +273,4 @@ class ReflectionView(QWidget):
             self.grat_edit.toPlainText().strip(),
             self.mood_selector.value,
         )
-        self.saved_lbl.setVisible(True)
-        from PyQt6.QtCore import QTimer
-        QTimer.singleShot(2500, lambda: self.saved_lbl.setVisible(False))
+        self._mark_saved()

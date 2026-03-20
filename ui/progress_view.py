@@ -10,7 +10,7 @@ from collections import defaultdict
 from database import Database
 
 CATEGORY_COLORS = {
-    "Mind": "#7c9cbf", "Body": "#6ea87a", "Study": "#c8790a",
+    "Mind": "#4a6fa5", "Body": "#6ea87a", "Study": "#c8790a",
     "Heart": "#c86a7c", "Path": "#9c7cbc",
 }
 
@@ -189,9 +189,13 @@ class ProgressView(QWidget):
         self.content_layout.addLayout(cards_row)
 
         # ── Weekly bar chart ──────────────────────
+        from PyQt6.QtWidgets import QApplication
+        dark = QApplication.palette().window().color().lightness() < 128
+        sec_col = "#6a5a42" if dark else "#9a8a78"
+
         section_lbl = QLabel("LAST 7 DAYS")
         section_lbl.setStyleSheet(
-            "color: #8a7a6a; font-size: 11px; font-weight: bold; letter-spacing: 2px;"
+            f"color: {sec_col}; font-size: 11px; font-weight: bold; letter-spacing: 2px;"
         )
         self.content_layout.addWidget(section_lbl)
 
@@ -214,7 +218,7 @@ class ProgressView(QWidget):
         # ── Per-habit streaks ──────────────────────
         section_lbl2 = QLabel("PRACTICE DETAILS")
         section_lbl2.setStyleSheet(
-            "color: #8a7a6a; font-size: 11px; font-weight: bold; letter-spacing: 2px; margin-top: 4px;"
+            f"color: {sec_col}; font-size: 11px; font-weight: bold; letter-spacing: 2px; margin-top: 4px;"
         )
         self.content_layout.addWidget(section_lbl2)
 
@@ -232,10 +236,15 @@ class ProgressView(QWidget):
             row_layout.setContentsMargins(14, 10, 14, 10)
             row_layout.setSpacing(12)
 
-            dot = QLabel("●")
-            dot.setStyleSheet(f"color: {color}; font-size: 16px;")
-            dot.setFixedWidth(20)
-            row_layout.addWidget(dot)
+            from PyQt6.QtWidgets import QApplication
+            dark = QApplication.palette().window().color().lightness() < 128
+            name_col   = "#d8c8a8" if dark else "#2c2416"
+            detail_col = "#6a5a42" if dark else "#8a7a6a"
+
+            bar = QFrame()
+            bar.setFixedWidth(3)
+            bar.setStyleSheet(f"background: {color}; border-radius: 2px;")
+            row_layout.addWidget(bar)
 
             info = QVBoxLayout()
             info.setSpacing(2)
@@ -244,10 +253,11 @@ class ProgressView(QWidget):
             name_font.setPixelSize(13)
             name_font.setBold(True)
             name_lbl.setFont(name_font)
+            name_lbl.setStyleSheet(f"color: {name_col};")
             info.addWidget(name_lbl)
 
             detail = QLabel(f"30-day: {int(rate_30 * 100)}%  ·  Longest: {longest} days")
-            detail.setStyleSheet("color: #8a7a6a; font-size: 11px;")
+            detail.setStyleSheet(f"color: {detail_col}; font-size: 11px;")
             info.addWidget(detail)
 
             row_layout.addLayout(info, 1)
@@ -255,8 +265,9 @@ class ProgressView(QWidget):
             week_bar = WeekBar(week_dots)
             row_layout.addWidget(week_bar)
 
+            streak_col = "#d4880f" if dark else "#c8790a"
             streak_lbl = QLabel(f"🔥 {streak}")
-            streak_lbl.setStyleSheet("color: #c8790a; font-size: 13px; min-width: 44px;")
+            streak_lbl.setStyleSheet(f"color: {streak_col}; font-size: 13px; min-width: 44px;")
             streak_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             row_layout.addWidget(streak_lbl)
 

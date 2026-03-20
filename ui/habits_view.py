@@ -17,9 +17,9 @@ EIGHTFOLD = [
     "Right Mindfulness", "Right Concentration", "(None)",
 ]
 PRIORITY_TEXT = {1: "Essential", 2: "Important", 3: "Gentle"}
-PRIORITY_COLOR = {1: "#d05a20", 2: "#c8790a", 3: "#5c7a5c"}
+PRIORITY_COLOR = {1: "#943d2b", 2: "#c8790a", 3: "#5c7a5c"}
 CATEGORY_COLORS = {
-    "Mind": "#7c9cbf", "Body": "#6ea87a", "Study": "#c8790a",
+    "Mind": "#4a6fa5", "Body": "#6ea87a", "Study": "#c8790a",
     "Heart": "#c86a7c", "Path": "#9c7cbc",
 }
 
@@ -133,41 +133,52 @@ class HabitRow(QFrame):
         self._build(habit)
 
     def _build(self, h: dict):
+        from PyQt6.QtWidgets import QApplication
+        dark = QApplication.palette().window().color().lightness() < 128
+
+        sep_col      = "#5a4a38" if dark else "#d8cfc0"
+        muted_col    = "#7a6a52" if dark else "#9a8a78"
+        asp_col      = "#6a5a44" if dark else "#b0a090"
+        name_col     = "#e0d0b8" if dark else "#2c2416"
+
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(14, 13, 14, 13)
+        layout.setContentsMargins(14, 12, 14, 12)
         layout.setSpacing(12)
 
-        # Category dot
+        # Category colour bar on left edge
         cat = h.get("category", "Mind")
         color = CATEGORY_COLORS.get(cat, "#888")
-        dot = QLabel("●")
-        dot.setStyleSheet(f"color: {color}; font-size: 16px;")
-        dot.setFixedWidth(20)
-        layout.addWidget(dot)
+
+        bar = QFrame()
+        bar.setFixedWidth(3)
+        bar.setStyleSheet(f"background: {color}; border-radius: 2px;")
+        layout.addWidget(bar)
 
         info = QVBoxLayout()
-        info.setSpacing(2)
+        info.setSpacing(3)
 
         name = QLabel(h["name"])
         name_font = QFont()
-        name_font.setPixelSize(14)
+        name_font.setPixelSize(13)
         name_font.setBold(True)
         name.setFont(name_font)
+        name.setStyleSheet(f"color: {name_col};")
         info.addWidget(name)
 
         row2 = QHBoxLayout()
-        row2.setSpacing(8)
+        row2.setSpacing(6)
+        row2.setContentsMargins(0, 0, 0, 0)
 
-        cat_badge = QLabel(cat)
-        cat_badge.setStyleSheet(
-            f"background: {color}20; color: {color}; border: 1px solid {color}50;"
-            f"border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: bold;"
-        )
-        row2.addWidget(cat_badge)
+        cat_lbl = QLabel(cat)
+        cat_lbl.setStyleSheet(f"color: {color}; font-size: 11px; font-weight: bold;")
+        row2.addWidget(cat_lbl)
 
-        sep = QLabel("·")
-        sep.setStyleSheet("color: #c8b898; font-size: 12px;")
-        row2.addWidget(sep)
+        def sep_dot():
+            s = QLabel("·")
+            s.setStyleSheet(f"color: {sep_col}; font-size: 11px;")
+            return s
+
+        row2.addWidget(sep_dot())
 
         pri = h.get("priority", 2)
         pri_col = PRIORITY_COLOR.get(pri, "#c8790a")
@@ -175,17 +186,17 @@ class HabitRow(QFrame):
         pri_lbl.setStyleSheet(f"color: {pri_col}; font-size: 11px;")
         row2.addWidget(pri_lbl)
 
+        row2.addWidget(sep_dot())
+
         tod = h.get("time_of_day", "Anytime")
-        tod_lbl = QLabel(f"{TIME_ICONS.get(tod,'◦')}  {tod}")
-        tod_lbl.setStyleSheet("color: #8a7a6a; font-size: 11px;")
+        tod_lbl = QLabel(f"{TIME_ICONS.get(tod, '◦')}  {tod}")
+        tod_lbl.setStyleSheet(f"color: {muted_col}; font-size: 11px;")
         row2.addWidget(tod_lbl)
 
         if h.get("eightfold_aspect"):
-            sep2 = QLabel("·")
-            sep2.setStyleSheet("color: #c8b898; font-size: 12px;")
-            row2.addWidget(sep2)
+            row2.addWidget(sep_dot())
             asp = QLabel(h["eightfold_aspect"])
-            asp.setStyleSheet("color: #a09080; font-size: 11px; font-style: italic;")
+            asp.setStyleSheet(f"color: {asp_col}; font-size: 11px; font-style: italic;")
             row2.addWidget(asp)
 
         row2.addStretch()
@@ -194,13 +205,13 @@ class HabitRow(QFrame):
 
         edit_btn = QPushButton("Edit")
         edit_btn.setObjectName("secondary_btn")
-        edit_btn.setMinimumWidth(64)
+        edit_btn.setMinimumWidth(56)
         edit_btn.clicked.connect(lambda: self.edit_requested.emit(self.habit_id))
         layout.addWidget(edit_btn)
 
         archive_btn = QPushButton("Archive")
         archive_btn.setObjectName("secondary_btn")
-        archive_btn.setMinimumWidth(80)
+        archive_btn.setMinimumWidth(72)
         archive_btn.clicked.connect(lambda: self.archive_requested.emit(self.habit_id))
         layout.addWidget(archive_btn)
 

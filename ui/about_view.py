@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
     QScrollArea, QFrame,
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication
 
 PATH_ASPECTS = [
     ("Right View", "◉", "See clearly — understand how things truly are, without distortion or delusion. For students: approach your work and yourself with honesty and curiosity."),
@@ -30,10 +31,19 @@ PRINCIPLES = [
      "You are not separate from those around you. Your growth ripples outward. Your struggles are shared by countless others on the same path."),
 ]
 
+CATEGORIES = [
+    ("Mind",  "◯", "#7c9cbf", "Meditation, awareness, and presence practices. The ground of clear seeing."),
+    ("Body",  "◈", "#6ea87a", "Movement, nourishment, rest. The vessel must be cared for."),
+    ("Study", "◎", "#c8790a", "Deep learning, focused effort, and the joy of understanding."),
+    ("Heart", "♡", "#c86a7c", "Gratitude, kindness, connection. The practices that keep us human."),
+    ("Path",  "☸", "#9c7cbc", "Intention, reflection, and alignment with your deepest values."),
+]
+
 
 class AboutView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._scroll = None
         self._build_ui()
 
     def _build_ui(self):
@@ -50,37 +60,52 @@ class AboutView(QWidget):
         h_layout.addWidget(title)
         layout.addWidget(header)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        layout.addWidget(scroll, 1)
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        layout.addWidget(self._scroll, 1)
+
+        self._build_content()
+
+    def refresh(self):
+        self._build_content()
+
+    def _build_content(self):
+        dark = QApplication.palette().window().color().lightness() < 128
+
+        title_col   = "#e8d8b8" if dark else "#2c2416"
+        body_col    = "#c0a880" if dark else "#4a3a2a"
+        muted_col   = "#7a6a52" if dark else "#7a6a5a"
+        card_name   = "#d8c8a8" if dark else "#2c2416"
+        card_desc   = "#907860" if dark else "#5a4a3a"
+        section_col = "#6a5a42" if dark else "#9a8a78"
 
         content = QWidget()
         cl = QVBoxLayout(content)
-        cl.setContentsMargins(28, 16, 28, 40)
-        cl.setSpacing(24)
-        scroll.setWidget(content)
+        cl.setContentsMargins(28, 20, 28, 40)
+        cl.setSpacing(20)
+        self._scroll.setWidget(content)
 
-        # ── Intro ──────────────────────────────────
+        # ── Intro card ──────────────────────────────
         intro = QFrame()
         intro.setObjectName("reflect_card")
         il = QVBoxLayout(intro)
-        il.setContentsMargins(24, 22, 24, 22)
+        il.setContentsMargins(24, 24, 24, 24)
         il.setSpacing(10)
 
         wheel = QLabel("☸")
-        wheel.setStyleSheet("font-size: 36px; color: #c8790a;")
+        wheel.setStyleSheet("font-size: 34px; color: #c8790a;")
         wheel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         il.addWidget(wheel)
 
         app_name = QLabel("Mindful Path")
-        app_name.setStyleSheet("font-size: 22px; font-weight: bold; color: #2c2416;")
+        app_name.setStyleSheet(f"font-size: 21px; font-weight: bold; color: {title_col};")
         app_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         il.addWidget(app_name)
 
         tagline = QLabel("A Daily Practice Tracker for Students")
-        tagline.setStyleSheet("font-size: 13px; color: #8a7a6a;")
+        tagline.setStyleSheet(f"font-size: 12px; color: {muted_col};")
         tagline.setAlignment(Qt.AlignmentFlag.AlignCenter)
         il.addWidget(tagline)
 
@@ -93,18 +118,14 @@ class AboutView(QWidget):
             "Each morning, the path begins again."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #4a3a2a; font-size: 13px; line-height: 1.6;")
+        desc.setStyleSheet(f"color: {body_col}; font-size: 13px;")
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         il.addWidget(desc)
 
         cl.addWidget(intro)
 
-        # ── Eightfold Path ────────────────────────
-        section = QLabel("THE NOBLE EIGHTFOLD PATH")
-        section.setStyleSheet(
-            "color: #8a7a6a; font-size: 11px; font-weight: bold; letter-spacing: 2px;"
-        )
-        cl.addWidget(section)
+        # ── Eightfold Path ──────────────────────────
+        self._section(cl, "THE NOBLE EIGHTFOLD PATH", section_col)
 
         sub = QLabel(
             "The Eightfold Path is not a checklist — it is eight facets of a single "
@@ -112,101 +133,88 @@ class AboutView(QWidget):
             "of these aspects as a gentle reminder of the deeper intention behind your habits."
         )
         sub.setWordWrap(True)
-        sub.setStyleSheet("color: #6a5a4a; font-size: 12px;")
+        sub.setStyleSheet(f"color: {muted_col}; font-size: 12px;")
         cl.addWidget(sub)
 
         for name, icon, desc_text in PATH_ASPECTS:
-            card = QFrame()
-            card.setObjectName("habit_row")
-            c_layout = QHBoxLayout(card)
-            c_layout.setContentsMargins(16, 12, 16, 12)
-            c_layout.setSpacing(14)
+            cl.addWidget(self._card(icon, "#c8790a", name, desc_text,
+                                    card_name, card_desc))
 
-            icon_lbl = QLabel(icon)
-            icon_lbl.setStyleSheet("color: #c8790a; font-size: 18px;")
-            icon_lbl.setFixedWidth(24)
-            icon_lbl.setAlignment(Qt.AlignmentFlag.AlignTop)
-            c_layout.addWidget(icon_lbl)
-
-            text_col = QVBoxLayout()
-            text_col.setSpacing(3)
-            name_lbl = QLabel(name)
-            name_lbl.setStyleSheet("font-weight: bold; font-size: 13px; color: #2c2416;")
-            text_col.addWidget(name_lbl)
-            desc_lbl = QLabel(desc_text)
-            desc_lbl.setWordWrap(True)
-            desc_lbl.setStyleSheet("color: #6a5a4a; font-size: 12px;")
-            text_col.addWidget(desc_lbl)
-            c_layout.addLayout(text_col, 1)
-
-            cl.addWidget(card)
-
-        # ── Core Principles ────────────────────────
-        section2 = QLabel("CORE PRINCIPLES")
-        section2.setStyleSheet(
-            "color: #8a7a6a; font-size: 11px; font-weight: bold; letter-spacing: 2px;"
-        )
-        section2.setContentsMargins(0, 8, 0, 0)
-        cl.addWidget(section2)
+        # ── Core Principles ─────────────────────────
+        self._section(cl, "CORE PRINCIPLES", section_col)
 
         for name, icon, desc_text in PRINCIPLES:
+            cl.addWidget(self._card(icon, "#9c7cbc", name, desc_text,
+                                    card_name, card_desc))
+
+        # ── Categories ──────────────────────────────
+        self._section(cl, "PRACTICE CATEGORIES", section_col)
+
+        for cat, icon, color, desc_text in CATEGORIES:
             card = QFrame()
             card.setObjectName("habit_row")
             c_layout = QHBoxLayout(card)
-            c_layout.setContentsMargins(16, 12, 16, 12)
-            c_layout.setSpacing(14)
+            c_layout.setContentsMargins(14, 10, 14, 10)
+            c_layout.setSpacing(12)
+
+            bar = QFrame()
+            bar.setFixedWidth(3)
+            bar.setStyleSheet(f"background: {color}; border-radius: 2px;")
+            c_layout.addWidget(bar)
 
             icon_lbl = QLabel(icon)
-            icon_lbl.setStyleSheet("color: #9c7cbc; font-size: 18px;")
-            icon_lbl.setFixedWidth(24)
-            icon_lbl.setAlignment(Qt.AlignmentFlag.AlignTop)
-            c_layout.addWidget(icon_lbl)
-
-            text_col = QVBoxLayout()
-            text_col.setSpacing(3)
-            name_lbl = QLabel(name)
-            name_lbl.setStyleSheet("font-weight: bold; font-size: 13px; color: #2c2416;")
-            text_col.addWidget(name_lbl)
-            desc_lbl = QLabel(desc_text)
-            desc_lbl.setWordWrap(True)
-            desc_lbl.setStyleSheet("color: #6a5a4a; font-size: 12px;")
-            text_col.addWidget(desc_lbl)
-            c_layout.addLayout(text_col, 1)
-
-            cl.addWidget(card)
-
-        # ── Categories ────────────────────────────
-        section3 = QLabel("PRACTICE CATEGORIES")
-        section3.setStyleSheet(
-            "color: #8a7a6a; font-size: 11px; font-weight: bold; letter-spacing: 2px;"
-        )
-        section3.setContentsMargins(0, 8, 0, 0)
-        cl.addWidget(section3)
-
-        categories = [
-            ("Mind", "◯", "#7c9cbf", "Meditation, awareness, and presence practices. The ground of clear seeing."),
-            ("Body", "◈", "#6ea87a", "Movement, nourishment, rest. The vessel must be cared for."),
-            ("Study", "◎", "#c8790a", "Deep learning, focused effort, and the joy of understanding."),
-            ("Heart", "♡", "#c86a7c", "Gratitude, kindness, connection. The practices that keep us human."),
-            ("Path", "☸", "#9c7cbc", "Intention, reflection, and alignment with your deepest values."),
-        ]
-        for cat, icon, color, desc_text in categories:
-            card = QFrame()
-            card.setObjectName("habit_row")
-            c_layout = QHBoxLayout(card)
-            c_layout.setContentsMargins(16, 10, 16, 10)
-            c_layout.setSpacing(14)
-
-            icon_lbl = QLabel(icon)
-            icon_lbl.setStyleSheet(f"color: {color}; font-size: 16px;")
-            icon_lbl.setFixedWidth(24)
+            icon_lbl.setStyleSheet(f"color: {color}; font-size: 15px;")
+            icon_lbl.setFixedWidth(22)
+            icon_lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignCenter)
             c_layout.addWidget(icon_lbl)
 
             name_lbl = QLabel(f"<b>{cat}</b> — {desc_text}")
-            name_lbl.setStyleSheet("color: #4a3a2a; font-size: 12px;")
+            name_lbl.setStyleSheet(f"color: {body_col}; font-size: 12px;")
             name_lbl.setWordWrap(True)
             c_layout.addWidget(name_lbl, 1)
 
             cl.addWidget(card)
 
         cl.addStretch()
+
+    def _section(self, layout, text: str, color: str):
+        lbl = QLabel(text)
+        lbl.setStyleSheet(
+            f"color: {color}; font-size: 11px; font-weight: bold; letter-spacing: 2px;"
+        )
+        lbl.setContentsMargins(0, 6, 0, 0)
+        layout.addWidget(lbl)
+
+    def _card(self, icon: str, icon_color: str, name: str, desc: str,
+              name_col: str, desc_col: str) -> QFrame:
+        card = QFrame()
+        card.setObjectName("habit_row")
+        c_layout = QHBoxLayout(card)
+        c_layout.setContentsMargins(14, 12, 14, 12)
+        c_layout.setSpacing(14)
+
+        bar = QFrame()
+        bar.setFixedWidth(3)
+        bar.setStyleSheet(f"background: {icon_color}80; border-radius: 2px;")
+        c_layout.addWidget(bar)
+
+        icon_lbl = QLabel(icon)
+        icon_lbl.setStyleSheet(f"color: {icon_color}; font-size: 16px;")
+        icon_lbl.setFixedWidth(22)
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignCenter)
+        c_layout.addWidget(icon_lbl)
+
+        text_col = QVBoxLayout()
+        text_col.setSpacing(3)
+
+        name_lbl = QLabel(name)
+        name_lbl.setStyleSheet(f"font-weight: bold; font-size: 13px; color: {name_col};")
+        text_col.addWidget(name_lbl)
+
+        desc_lbl = QLabel(desc)
+        desc_lbl.setWordWrap(True)
+        desc_lbl.setStyleSheet(f"color: {desc_col}; font-size: 12px;")
+        text_col.addWidget(desc_lbl)
+
+        c_layout.addLayout(text_col, 1)
+        return card
