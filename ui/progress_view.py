@@ -169,10 +169,14 @@ class ProgressView(QWidget):
         total = len(habits)
         today_pct = int(100 * done_today / total) if total else 0
 
-        best_streak = max((self.db.get_streak(h["id"]) for h in habits), default=0)
-        avg_30 = 0.0
-        if habits:
-            avg_30 = sum(self.db.get_completion_rate(h["id"], 30) for h in habits) / len(habits)
+        habit_ids = [h["id"] for h in habits]
+        streaks = self.db.get_streaks_bulk(habit_ids)
+        longest_streaks = self.db.get_longest_streaks_bulk(habit_ids)
+        rates_30 = self.db.get_completion_rates_bulk(habit_ids, 30)
+        weekly = self.db.get_weekly_completions_bulk(habit_ids)
+
+        best_streak = max(streaks.values(), default=0)
+        avg_30 = sum(rates_30.values()) / len(habits) if habits else 0.0
 
         # ── Stat cards ──────────────────────────
         cards_row = QHBoxLayout()
@@ -180,7 +184,7 @@ class ProgressView(QWidget):
         card_data = [
             ("Today", f"{today_pct}%", "#c8790a"),
             ("Active Practices", str(total), "#7c9cbf"),
-            ("Best Streak", f"{best_streak}🔥", "#d05a20"),
+            ("Best Streak", f"{best_streak} days", "#d05a20"),
             ("30-Day Avg", f"{int(avg_30 * 100)}%", "#6ea87a"),
         ]
         for label, val, color in card_data:
@@ -199,14 +203,12 @@ class ProgressView(QWidget):
         )
         self.content_layout.addWidget(section_lbl)
 
-        # Build per-day completion rate
+        # Build per-day completion rate using a single aggregated query
+        daily_totals = self.db.get_daily_totals(7)
         week_data = []
         for i in range(6, -1, -1):
             d = date.today() - timedelta(days=i)
-            d_str = d.isoformat()
-            day_done = sum(
-                1 for h in habits if self.db.get_completion(h["id"], d_str)
-            )
+            day_done = daily_totals.get(d.isoformat(), 0)
             pct = day_done / total if total else 0
             week_data.append((d.strftime("%a"), pct))
 
@@ -223,10 +225,11 @@ class ProgressView(QWidget):
         self.content_layout.addWidget(section_lbl2)
 
         for h in habits:
-            streak = self.db.get_streak(h["id"])
-            longest = self.db.get_longest_streak(h["id"])
-            rate_30 = self.db.get_completion_rate(h["id"], 30)
-            week_dots = self.db.get_weekly_completions(h["id"])
+            hid = h["id"]
+            streak = streaks.get(hid, 0)
+            longest = longest_streaks.get(hid, 0)
+            rate_30 = rates_30.get(hid, 0.0)
+            week_dots = weekly.get(hid, [False] * 7)
             cat = h.get("category", "Mind")
             color = CATEGORY_COLORS.get(cat, "#888")
 
@@ -236,8 +239,6 @@ class ProgressView(QWidget):
             row_layout.setContentsMargins(14, 10, 14, 10)
             row_layout.setSpacing(12)
 
-            from PyQt6.QtWidgets import QApplication
-            dark = QApplication.palette().window().color().lightness() < 128
             name_col   = "#d8c8a8" if dark else "#2c2416"
             detail_col = "#6a5a42" if dark else "#8a7a6a"
 
@@ -266,7 +267,7 @@ class ProgressView(QWidget):
             row_layout.addWidget(week_bar)
 
             streak_col = "#d4880f" if dark else "#c8790a"
-            streak_lbl = QLabel(f"🔥 {streak}")
+            streak_lbl = QLabel(f"{streak}d")
             streak_lbl.setStyleSheet(f"color: {streak_col}; font-size: 13px; min-width: 44px;")
             streak_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             row_layout.addWidget(streak_lbl)

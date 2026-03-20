@@ -6,6 +6,11 @@ QMainWindow, QWidget {
     font-size: 13px;
 }
 
+QLabel {
+    background: transparent;
+    border: none;
+}
+
 QDialog {
     background-color: #f7f2e8;
     color: #1c120a;

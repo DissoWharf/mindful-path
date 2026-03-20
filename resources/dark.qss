@@ -6,6 +6,11 @@ QMainWindow, QWidget {
     font-size: 13px;
 }
 
+QLabel {
+    background: transparent;
+    border: none;
+}
+
 QDialog {
     background-color: #19130e;
     color: #ecdfc9;
@@ -80,9 +85,11 @@ QMessageBox QPushButton {
 }
 
 #nav_button:checked {
-    background-color: #d4891c;
-    color: #ffffff;
+    background-color: #231c14;
+    color: #d4891c;
     font-weight: bold;
+    border-left: 3px solid #d4891c;
+    padding-left: 11px;
 }
 
 #sidebar_hint {
@@ -94,7 +101,7 @@ QMessageBox QPushButton {
 #settings_btn {
     background: transparent;
     color: #8a7860;
-    border: 1px solid #3a2e20;
+    border: none;
     border-radius: 8px;
     padding: 6px 20px;
     font-size: 13px;
@@ -135,34 +142,44 @@ QMessageBox QPushButton {
     border-bottom: 1px solid #2e2016;
 }
 
+#today_day {
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    color: #6a5540;
+}
+
 #today_date {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
     color: #ecdfc9;
 }
 
-#today_day {
-    font-size: 13px;
-    color: #9e7e61;
+#today_habits_sub {
+    font-size: 11px;
+    color: #7a6040;
 }
 
 /* ── Quote bar ─────────────────────────────────────────────── */
 #quote_bar {
-    background-color: #1f1710;
+    background-color: #1a1410;
     border-bottom: 1px solid #2e2016;
 }
 
 #quote_text {
-    color: #6b8fbf;
+    color: #7a9abf;
     font-size: 13px;
     font-style: italic;
     line-height: 1.5;
+    border-left: 3px solid #3a5a7a;
+    padding-left: 12px;
 }
 
 #quote_author {
-    color: #7a6040;
+    color: #6a5540;
     font-size: 11px;
-    margin-top: 2px;
+    margin-top: 4px;
+    padding-left: 15px;
 }
 
 /* ── Cards / Rows ──────────────────────────────────────────── */

@@ -252,8 +252,6 @@ class ReflectionView(QWidget):
             self.mood_selector.set_mood(3)
             self._mark_unsaved()
 
-        self._mark_unsaved()
-
     def _mark_saved(self):
         self.save_btn.setText("Saved ✓")
         self.save_btn.setStyleSheet(

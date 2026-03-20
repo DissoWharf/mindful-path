@@ -90,12 +90,15 @@ class AboutView(QWidget):
         # ── Intro card ──────────────────────────────
         intro = QFrame()
         intro.setObjectName("reflect_card")
+        intro.setStyleSheet(
+            "QFrame#reflect_card { border-top: 3px solid #c8790a; }"
+        )
         il = QVBoxLayout(intro)
         il.setContentsMargins(24, 24, 24, 24)
         il.setSpacing(10)
 
         wheel = QLabel("☸")
-        wheel.setStyleSheet("font-size: 34px; color: #c8790a;")
+        wheel.setStyleSheet("font-size: 36px; color: #d4880f;")
         wheel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         il.addWidget(wheel)
 
@@ -181,8 +184,9 @@ class AboutView(QWidget):
         lbl = QLabel(text)
         lbl.setStyleSheet(
             f"color: {color}; font-size: 11px; font-weight: bold; letter-spacing: 2px;"
+            f"border-left: 3px solid {color}; padding-left: 10px;"
         )
-        lbl.setContentsMargins(0, 6, 0, 0)
+        lbl.setContentsMargins(0, 8, 0, 2)
         layout.addWidget(lbl)
 
     def _card(self, icon: str, icon_color: str, name: str, desc: str,

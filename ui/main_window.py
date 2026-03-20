@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 import os
 import json
+import time
 
 from .today_view import TodayView
 from .habits_view import HabitsView
@@ -15,6 +16,27 @@ from .meditation_view import MeditationView
 from database import Database
 
 CONFIG_PATH = os.path.expanduser("~/.mindful_path/config.json")
+
+LOG_PATH = "/home/justin/Documents/Claude/mindful_path/.cursor/debug-96e8b9.log"
+SESSION_ID = "96e8b9"
+RUN_ID = "close_pre"
+
+
+def _log_ndjson(*, hypothesis_id: str, location: str, message: str, data: dict | None = None):
+    payload = {
+        "sessionId": SESSION_ID,
+        "runId": RUN_ID,
+        "hypothesisId": hypothesis_id,
+        "location": location,
+        "message": message,
+        "data": data or {},
+        "timestamp": int(time.time() * 1000),
+    }
+    try:
+        with open(LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        pass
 
 
 def load_config() -> dict:
@@ -160,10 +182,8 @@ class MainWindow(QMainWindow):
 
         bottom_row = QWidget()
         br_layout = QHBoxLayout(bottom_row)
-        br_layout.setContentsMargins(16, 0, 16, 0)
-        br_layout.addStretch()
+        br_layout.setContentsMargins(10, 0, 10, 0)
         br_layout.addWidget(settings_btn)
-        br_layout.addStretch()
         layout.addWidget(bottom_row)
 
         hint = QLabel("each day, begin again")
@@ -238,8 +258,32 @@ class MainWindow(QMainWindow):
     def _open_settings(self):
         from .settings_dialog import SettingsDialog
         dlg = SettingsDialog(self._notif, self)
-        dlg.exec()
+        if dlg.exec():
+            self.today_view._load_sound_setting()
 
     def closeEvent(self, event):
+        notif_timer_active = None
+        notif_timer_parent_type = None
+        if self._notif is not None and getattr(self._notif, "_timer", None) is not None:
+            try:
+                notif_timer_active = self._notif._timer.isActive()
+                parent = self._notif._timer.parent()
+                notif_timer_parent_type = type(parent).__name__ if parent else None
+            except Exception:
+                pass
+
+        # #region agent log
+        _log_ndjson(
+            hypothesis_id="H1",
+            location="ui/main_window.py:closeEvent",
+            message="close_event_called",
+            data={
+                "db_has_conn": getattr(self.db, "conn", None) is not None,
+                "notif_timer_active": notif_timer_active,
+                "notif_timer_parent_type": notif_timer_parent_type,
+            },
+        )
+        # #endregion
+
         self.db.close()
         super().closeEvent(event)

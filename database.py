@@ -139,10 +139,14 @@ class Database:
             ("Weekly Review", "Look back at the week: what did I understand deeply? What gaps remain?", "Study", 2, "Right View", "Afternoon"),
             ("Plan Tomorrow Tonight", "Before bed, write your top 3 intentions for tomorrow. Begin each day with direction.", "Path", 3, "Right Effort", "Evening"),
         ]
+        new_names = [h[0] for h in new_habits]
+        placeholders = ",".join("?" * len(new_names))
+        existing = {r[0] for r in c.execute(
+            f"SELECT name FROM habits WHERE name IN ({placeholders})", new_names
+        ).fetchall()}
         inserted_any = False
         for habit in new_habits:
-            c.execute("SELECT id FROM habits WHERE name = ?", (habit[0],))
-            if not c.fetchone():
+            if habit[0] not in existing:
                 c.execute(
                     "INSERT INTO habits (name, description, category, priority, eightfold_aspect, time_of_day) VALUES (?,?,?,?,?,?)",
                     habit,
@@ -251,7 +255,111 @@ class Database:
             result.append(self.get_completion(habit_id, d))
         return result
 
+    def get_weekly_completions_bulk(self, habit_ids: List[int]) -> Dict[int, List[bool]]:
+        """Returns {habit_id: [bool x 7]} for the last 7 days in a single query."""
+        if not habit_ids:
+            return {}
+        today = date.today()
+        start = (today - timedelta(days=6)).isoformat()
+        placeholders = ",".join("?" * len(habit_ids))
+        rows = self.conn.execute(
+            f"SELECT habit_id, date, completed FROM daily_completions"
+            f" WHERE habit_id IN ({placeholders}) AND date >= ?",
+            habit_ids + [start],
+        ).fetchall()
+        comp_map: Dict[tuple, bool] = {
+            (r["habit_id"], r["date"]): bool(r["completed"]) for r in rows
+        }
+        result: Dict[int, List[bool]] = {}
+        for hid in habit_ids:
+            result[hid] = [
+                comp_map.get((hid, (today - timedelta(days=i)).isoformat()), False)
+                for i in range(6, -1, -1)
+            ]
+        return result
+
     # ── Streaks ────────────────────────────────────────────────────────────
+
+    def get_streaks_bulk(self, habit_ids: List[int]) -> Dict[int, int]:
+        """Returns {habit_id: current_streak} for multiple habits in two queries."""
+        if not habit_ids:
+            return {}
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+        placeholders = ",".join("?" * len(habit_ids))
+        rows = self.conn.execute(
+            f"SELECT habit_id, date FROM daily_completions"
+            f" WHERE habit_id IN ({placeholders}) AND completed=1 ORDER BY habit_id, date DESC",
+            habit_ids,
+        ).fetchall()
+        from collections import defaultdict
+        dates_by_habit: Dict[int, List] = defaultdict(list)
+        for r in rows:
+            dates_by_habit[r["habit_id"]].append(date.fromisoformat(r["date"]))
+        result: Dict[int, int] = {}
+        for hid in habit_ids:
+            dates = dates_by_habit.get(hid, [])
+            if not dates or dates[0] not in (today, yesterday):
+                result[hid] = 0
+                continue
+            streak = 0
+            current = dates[0]
+            for d in dates:
+                if d == current:
+                    streak += 1
+                    current -= timedelta(days=1)
+                else:
+                    break
+            result[hid] = streak
+        return result
+
+    def get_longest_streaks_bulk(self, habit_ids: List[int]) -> Dict[int, int]:
+        """Returns {habit_id: longest_streak} for multiple habits in one query."""
+        if not habit_ids:
+            return {}
+        placeholders = ",".join("?" * len(habit_ids))
+        rows = self.conn.execute(
+            f"SELECT habit_id, date FROM daily_completions"
+            f" WHERE habit_id IN ({placeholders}) AND completed=1 ORDER BY habit_id, date ASC",
+            habit_ids,
+        ).fetchall()
+        from collections import defaultdict
+        dates_by_habit: Dict[int, List] = defaultdict(list)
+        for r in rows:
+            dates_by_habit[r["habit_id"]].append(date.fromisoformat(r["date"]))
+        result: Dict[int, int] = {}
+        for hid in habit_ids:
+            dates = dates_by_habit.get(hid, [])
+            if not dates:
+                result[hid] = 0
+                continue
+            best = cur = 1
+            for i in range(1, len(dates)):
+                if dates[i] == dates[i - 1] + timedelta(days=1):
+                    cur += 1
+                    best = max(best, cur)
+                else:
+                    cur = 1
+            result[hid] = best
+        return result
+
+    def get_completion_rates_bulk(self, habit_ids: List[int], days: int = 30) -> Dict[int, float]:
+        """Returns {habit_id: rate} for multiple habits in one query."""
+        if not habit_ids:
+            return {}
+        placeholders = ",".join("?" * len(habit_ids))
+        rows = self.conn.execute(
+            f"SELECT habit_id, COUNT(*) as total, SUM(completed) as done"
+            f" FROM daily_completions"
+            f" WHERE habit_id IN ({placeholders}) AND date >= date('now', ?)"
+            f" GROUP BY habit_id",
+            habit_ids + [f"-{days} days"],
+        ).fetchall()
+        result: Dict[int, float] = {hid: 0.0 for hid in habit_ids}
+        for r in rows:
+            if r["total"]:
+                result[r["habit_id"]] = (r["done"] or 0) / r["total"]
+        return result
 
     def get_streak(self, habit_id: int) -> int:
         today = date.today()

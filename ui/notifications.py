@@ -4,8 +4,30 @@ from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QFont
 from PyQt6.QtCore import QTimer, QTime, Qt
 from datetime import date
 import json, os
+import time
 
 CONFIG_PATH = os.path.expanduser("~/.mindful_path/config.json")
+
+LOG_PATH = "/home/justin/Documents/Claude/mindful_path/.cursor/debug-96e8b9.log"
+SESSION_ID = "96e8b9"
+RUN_ID = "close_pre"
+
+
+def _log_ndjson(*, hypothesis_id: str, location: str, message: str, data: dict | None = None):
+    payload = {
+        "sessionId": SESSION_ID,
+        "runId": RUN_ID,
+        "hypothesisId": hypothesis_id,
+        "location": location,
+        "message": message,
+        "data": data or {},
+        "timestamp": int(time.time() * 1000),
+    }
+    try:
+        with open(LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        pass
 
 TIME_MESSAGES = {
     "morning": [
@@ -67,6 +89,64 @@ class NotificationManager:
         self._timer.timeout.connect(self._check)
         if self._cfg.get("notifications_enabled", True):
             self._timer.start()
+
+        # #region agent log
+        _log_ndjson(
+            hypothesis_id="H1",
+            location="ui/notifications.py:__init__",
+            message="notification_manager_timer_state",
+            data={
+                "tray_available": QSystemTrayIcon.isSystemTrayAvailable(),
+                "tray_exists": self._tray is not None,
+                "timer_active": self._timer.isActive(),
+                "timer_parent_type": type(self._timer.parent()).__name__ if self._timer.parent() else None,
+            },
+        )
+        # #endregion
+
+        # Ensure the tray icon is removed when the app quits.
+        # (On some desktops, leaving a QSystemTrayIcon alive can keep the icon visible.)
+        try:
+            app = QApplication.instance()
+            if app:
+                app.aboutToQuit.connect(self._on_about_to_quit)
+        except Exception:
+            pass
+
+    def _on_about_to_quit(self):
+        timer_active = None
+        tray_visible = None
+        try:
+            timer_active = self._timer.isActive() if self._timer else None
+        except Exception:
+            timer_active = None
+
+        try:
+            if self._tray is not None:
+                # QSystemTrayIcon doesn't expose a consistent "visible" getter across backends.
+                tray_visible = True
+                self._tray.hide()
+        except Exception:
+            pass
+
+        # #region agent log
+        _log_ndjson(
+            hypothesis_id="H6",
+            location="ui/notifications.py:_on_about_to_quit",
+            message="cleanup_tray_on_quit",
+            data={
+                "timer_active": timer_active,
+                "tray_exists": self._tray is not None,
+                "tray_visible_set_to_false": True if self._tray is not None else False,
+            },
+        )
+        # #endregion
+
+        try:
+            if self._timer:
+                self._timer.stop()
+        except Exception:
+            pass
 
     # ── Config ──────────────────────────────────────────────
 

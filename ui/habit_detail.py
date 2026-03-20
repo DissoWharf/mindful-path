@@ -73,27 +73,31 @@ class HabitDetailDialog(QDialog):
         self._build()
 
     def _build(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 26, 28, 24)
-        layout.setSpacing(18)
+        from PyQt6.QtWidgets import QApplication
+        dark = QApplication.palette().window().color().lightness() < 128
 
-        # ── Header ──────────────────────────────────
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
         cat   = self.habit.get("category", "Mind")
         color = CATEGORY_COLORS.get(cat, "#888")
         icon  = CATEGORY_ICONS.get(cat, "●")
 
-        header = QHBoxLayout()
-        header.setSpacing(10)
-
-        cat_badge = QLabel(f"{icon}  {cat}")
-        cat_badge.setStyleSheet(
-            f"background: {color}20; color: {color}; border: 1px solid {color}50;"
-            f"border-radius: 10px; padding: 3px 10px; font-size: 11px; font-weight: bold;"
+        # ── Colored header band ──────────────────────
+        header_widget = QWidget()
+        header_widget.setStyleSheet(
+            f"background: {color}18; border-bottom: 2px solid {color}60;"
         )
-        header.addWidget(cat_badge)
-        header.addStretch()
+        h_layout = QVBoxLayout(header_widget)
+        h_layout.setContentsMargins(24, 20, 24, 16)
+        h_layout.setSpacing(6)
 
-        layout.addLayout(header)
+        cat_lbl = QLabel(f"{icon}  {cat.upper()}")
+        cat_lbl.setStyleSheet(
+            f"color: {color}; font-size: 10px; font-weight: bold; letter-spacing: 2px;"
+        )
+        h_layout.addWidget(cat_lbl)
 
         name_lbl = QLabel(self.habit["name"])
         name_font = QFont()
@@ -101,24 +105,29 @@ class HabitDetailDialog(QDialog):
         name_font.setBold(True)
         name_lbl.setFont(name_font)
         name_lbl.setWordWrap(True)
-        layout.addWidget(name_lbl)
+        name_col = "#e8d8b8" if dark else "#1c120a"
+        name_lbl.setStyleSheet(f"color: {name_col};")
+        h_layout.addWidget(name_lbl)
+
+        if self.habit.get("eightfold_aspect"):
+            asp = QLabel(f"↝  {self.habit['eightfold_aspect']}")
+            asp.setStyleSheet("color: #8a7a6a; font-size: 12px; font-style: italic;")
+            h_layout.addWidget(asp)
+
+        layout.addWidget(header_widget)
+
+        # ── Body ─────────────────────────────────────
+        body = QWidget()
+        b_layout = QVBoxLayout(body)
+        b_layout.setContentsMargins(24, 18, 24, 20)
+        b_layout.setSpacing(14)
+        layout.addWidget(body)
 
         if self.habit.get("description"):
             desc = QLabel(self.habit["description"])
             desc.setWordWrap(True)
             desc.setStyleSheet("color: #8a7a6a; font-size: 13px;")
-            layout.addWidget(desc)
-
-        if self.habit.get("eightfold_aspect"):
-            asp = QLabel(f"↝   {self.habit['eightfold_aspect']}")
-            asp.setStyleSheet("color: #a09080; font-size: 12px; font-style: italic;")
-            layout.addWidget(asp)
-
-        # ── Divider ──────────────────────────────────
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setStyleSheet("color: #e8e0d0;")
-        layout.addWidget(line)
+            b_layout.addWidget(desc)
 
         # ── Stats ────────────────────────────────────
         streak  = self.db.get_streak(self.habit["id"])
@@ -128,13 +137,16 @@ class HabitDetailDialog(QDialog):
 
         stats_frame = QFrame()
         stats_frame.setObjectName("reflect_card")
+        stats_frame.setStyleSheet(
+            f"QFrame#reflect_card {{ border-left: 3px solid {color}80; }}"
+        )
         sf_layout = QVBoxLayout(stats_frame)
         sf_layout.setContentsMargins(16, 14, 16, 14)
         sf_layout.setSpacing(10)
 
-        sf_layout.addWidget(StatRow("🔥", "Current streak",  f"{streak} days",          "#d4880f"))
-        sf_layout.addWidget(StatRow("⭐", "Longest streak",  f"{longest} days",         "#c8790a"))
-        sf_layout.addWidget(StatRow("◈", "30-day completion", f"{int(rate * 100)}%",    "#6ea87a"))
+        sf_layout.addWidget(StatRow("◉", "Current streak",    f"{streak} days",       "#d4880f"))
+        sf_layout.addWidget(StatRow("◈", "Longest streak",    f"{longest} days",      "#c8790a"))
+        sf_layout.addWidget(StatRow("◎", "30-day completion", f"{int(rate * 100)}%",  "#6ea87a"))
 
         dots_row = QHBoxLayout()
         dots_row.setSpacing(8)
@@ -145,12 +157,12 @@ class HabitDetailDialog(QDialog):
         dots_row.addStretch()
         sf_layout.addLayout(dots_row)
 
-        layout.addWidget(stats_frame)
+        b_layout.addWidget(stats_frame)
 
         # ── Note ─────────────────────────────────────
         note_lbl = QLabel("Note for today  (optional)")
         note_lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #8a7a6a;")
-        layout.addWidget(note_lbl)
+        b_layout.addWidget(note_lbl)
 
         self.note_edit = QTextEdit()
         self.note_edit.setPlaceholderText("How did this practice feel? Any observations…")
@@ -158,7 +170,7 @@ class HabitDetailDialog(QDialog):
         existing_note = self.db.get_completion_note(self.habit["id"], self.date_str)
         if existing_note:
             self.note_edit.setPlainText(existing_note)
-        layout.addWidget(self.note_edit)
+        b_layout.addWidget(self.note_edit)
 
         # ── Buttons ───────────────────────────────────
         btn_row = QHBoxLayout()
@@ -175,7 +187,7 @@ class HabitDetailDialog(QDialog):
         btn_row.addWidget(close_btn)
         btn_row.addStretch()
         btn_row.addWidget(self.toggle_btn)
-        layout.addLayout(btn_row)
+        b_layout.addLayout(btn_row)
 
     def _update_toggle_label(self):
         if self._completed:

@@ -2,10 +2,12 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QScrollArea, QFrame, QCheckBox, QSizePolicy,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPoint, QRect
-from PyQt6.QtGui import QPainter, QPen, QColor, QFont
+from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPoint, QRect, QTimer
+from PyQt6.QtGui import QPainter, QPen, QColor, QFont, QPainterPath, QLinearGradient
+import math
 from datetime import date
 
+from collections import defaultdict
 from database import Database
 
 # ── Quotes ────────────────────────────────────────────────────────────────
@@ -42,12 +44,21 @@ PRIORITY_COLOR = {1: "#943d2b", 2: "#c8790a", 3: "#5c7a5c"}
 
 # ── Progress Ring ─────────────────────────────────────────────────────────
 
-class ProgressRing(QWidget):
+class WaveFill(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._done = 0
         self._total = 1
-        self.setFixedSize(110, 110)
+        self._phase = 0.0
+        self.setFixedSize(110, 80)
+
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start(50)
+
+    def _tick(self):
+        self._phase += 0.04
+        self.update()
 
     def set_progress(self, done: int, total: int):
         self._done = done
@@ -57,46 +68,62 @@ class ProgressRing(QWidget):
     def paintEvent(self, event):
         from PyQt6.QtWidgets import QApplication
         dark = QApplication.palette().window().color().lightness() < 128
-        track_col = QColor("#3e3224") if dark else QColor("#e8e0d0")
-        arc_col = QColor("#d4880f") if dark else QColor("#c8790a")
-        text_col = QApplication.palette().windowText().color()
 
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        m = 10
-        rect = QRectF(m, m, self.width() - 2 * m, self.height() - 2 * m)
-
-        # Track
-        pen = QPen(track_col)
-        pen.setWidth(9)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        p.setPen(pen)
-        p.drawEllipse(rect)
-
-        # Arc
+        w, h = self.width(), self.height()
         pct = self._done / self._total if self._total else 0
-        if pct > 0:
-            angle = int(pct * 360 * 16)
-            pen = QPen(arc_col)
-            pen.setWidth(9)
-            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            p.setPen(pen)
-            p.drawArc(rect, 90 * 16, -angle)
+        radius = 10
 
-        # Center text — muted when at 0%, full color when progress > 0
+        # Background vessel
+        bg = QColor("#2a2018") if dark else QColor("#e8e0d0")
+        p.setBrush(bg)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.drawRoundedRect(0, 0, w, h, radius, radius)
+
+        if pct > 0:
+            fill_h = pct * h
+            wave_top = h - fill_h
+            amplitude = 3.5 if pct < 0.97 else 0.5
+
+            # Build wave path
+            path = QPainterPath()
+            path.moveTo(0, h)
+            path.lineTo(0, wave_top + amplitude * math.sin(self._phase))
+            for x in range(1, w + 1):
+                y = wave_top + amplitude * math.sin(x * 2.5 * math.pi / w + self._phase)
+                path.lineTo(x, y)
+            path.lineTo(w, h)
+            path.closeSubpath()
+
+            # Gradient fill
+            grad = QLinearGradient(0, wave_top, 0, h)
+            if dark:
+                grad.setColorAt(0.0, QColor("#d4880f"))
+                grad.setColorAt(1.0, QColor("#8a4a08"))
+            else:
+                grad.setColorAt(0.0, QColor("#e09020"))
+                grad.setColorAt(1.0, QColor("#c8790a"))
+            p.setBrush(grad)
+            p.drawPath(path)
+
+        # Percentage text
         pct_int = int(pct * 100)
         font = QFont()
-        font.setPixelSize(20)
+        font.setPixelSize(22)
         font.setBold(True)
         p.setFont(font)
+
         if pct == 0:
-            muted = QColor(text_col)
-            muted.setAlphaF(0.35)
-            p.setPen(QPen(muted))
+            text_col = QColor("#5a4a38") if dark else QColor("#c0b0a0")
+        elif pct > 0.55:
+            text_col = QColor("#ffffff")
         else:
-            p.setPen(QPen(text_col))
-        p.drawText(rect, Qt.AlignmentFlag.AlignCenter, f"{pct_int}%")
+            text_col = QColor("#d4880f") if dark else QColor("#c8790a")
+
+        p.setPen(QPen(text_col))
+        p.drawText(QRectF(0, 0, w, h), Qt.AlignmentFlag.AlignCenter, f"{pct_int}%")
 
 
 # ── Habit Item ────────────────────────────────────────────────────────────
@@ -234,8 +261,20 @@ class TodayView(QWidget):
         super().__init__(parent)
         self.db = db
         self._today = date.today().isoformat()
+        self._sound_on = True
+        self._load_sound_setting()
         self._build_ui()
         self.refresh()
+
+    def _load_sound_setting(self):
+        import json, os
+        cfg_path = os.path.expanduser("~/.mindful_path/config.json")
+        try:
+            if os.path.exists(cfg_path):
+                with open(cfg_path) as f:
+                    self._sound_on = json.load(f).get("sound_enabled", True)
+        except (OSError, ValueError):
+            self._sound_on = True
 
     def _build_ui(self):
         outer = QVBoxLayout(self)
@@ -245,20 +284,25 @@ class TodayView(QWidget):
         # ── Header bar ──────────────────────────────
         header = QWidget()
         header.setObjectName("today_header")
-        header.setFixedHeight(90)
+        header.setFixedHeight(114)
         h_layout = QHBoxLayout(header)
-        h_layout.setContentsMargins(28, 16, 28, 16)
+        h_layout.setContentsMargins(28, 20, 28, 20)
 
         date_block = QVBoxLayout()
-        self.date_label = QLabel()
-        self.date_label.setObjectName("today_date")
+        date_block.setSpacing(4)
         self.day_label = QLabel()
         self.day_label.setObjectName("today_day")
-        date_block.addWidget(self.date_label)
+        self.date_label = QLabel()
+        self.date_label.setObjectName("today_date")
+        self.habits_label = QLabel()
+        self.habits_label.setObjectName("today_habits_sub")
         date_block.addWidget(self.day_label)
+        date_block.addWidget(self.date_label)
+        date_block.addStretch()
+        date_block.addWidget(self.habits_label)
         h_layout.addLayout(date_block, 1)
 
-        self.ring = ProgressRing()
+        self.ring = WaveFill()
         h_layout.addWidget(self.ring)
 
         outer.addWidget(header)
@@ -296,8 +340,8 @@ class TodayView(QWidget):
         d = date.today()
 
         # Header
+        self.day_label.setText(d.strftime("%A").upper())
         self.date_label.setText(d.strftime("%B %d, %Y"))
-        self.day_label.setText(d.strftime("%A"))
 
         # Quote (deterministic per day)
         idx = d.timetuple().tm_yday % len(QUOTES)
@@ -315,10 +359,14 @@ class TodayView(QWidget):
         completions = self.db.get_today_completions(self._today)
 
         done = sum(1 for h in habits if completions.get(h["id"], False))
-        self.ring.set_progress(done, len(habits))
+        total_habits = len(habits)
+        self.ring.set_progress(done, total_habits)
+        self.habits_label.setText(f"{done} of {total_habits} complete")
+
+        habit_ids = [h["id"] for h in habits]
+        streaks = self.db.get_streaks_bulk(habit_ids)
 
         # Group by time of day
-        from collections import defaultdict
         grouped: dict = defaultdict(list)
         for h in habits:
             grouped[h.get("time_of_day", "Anytime")].append(h)
@@ -351,7 +399,7 @@ class TodayView(QWidget):
 
             for h in grouped[tod]:
                 completed = completions.get(h["id"], False)
-                streak = self.db.get_streak(h["id"])
+                streak = streaks.get(h["id"], 0)
                 item = HabitItem(h, completed, streak, self.db, self._today)
                 item.toggled.connect(self._on_habit_toggled)
                 self.habits_layout.insertWidget(insert_pos, item)
@@ -367,22 +415,14 @@ class TodayView(QWidget):
         habits = self.db.get_habits()
         completions = self.db.get_today_completions(self._today)
         done = sum(1 for h in habits if completions.get(h["id"], False))
-        self.ring.set_progress(done, len(habits))
+        total_habits = len(habits)
+        self.ring.set_progress(done, total_habits)
+        self.habits_label.setText(f"{done} of {total_habits} complete")
         self.completion_changed.emit()
 
-        if completed:
+        if completed and self._sound_on:
             try:
-                import json, os
-                cfg_path = os.path.expanduser("~/.mindful_path/config.json")
-                sound_on = True
-                try:
-                    if os.path.exists(cfg_path):
-                        with open(cfg_path) as f:
-                            sound_on = json.load(f).get("sound_enabled", True)
-                except (OSError, ValueError, KeyError):
-                    sound_on = True
-                if sound_on:
-                    from sound import play_bell
-                    play_bell()
+                from sound import play_bell
+                play_bell()
             except Exception:
                 pass
